@@ -1,0 +1,141 @@
+== Xataface OAuth Module
+
+This module adds support for logging into a Xataface application using an OAuth service.  Both OAuth1.0 and OAuth2.0 are supported.
+
+[TIP]
+====
+The best way to get started is to follow the instructions for the specific OAuth sub-module.  This module and its installation instructions provide a foundation for developing specific OAuth sub-modules - hence the instructions in thie README cater to OAuth module developers, rather than application developers.
+
+Available Sub-modules include:
+
+. https://github.com/shannah/xataface-module-oauth-facebook[Facebook]
+. https://github.com/shannah/xataface-module-oauth-twitter[Twitter]
+. https://github.com/shannah/xataface-module-oauth-linkedin[LinkedIn]
+. https://github.com/shannah/xataface-module-oauth-instagram[Instagram]
+
+====
+
+=== Installation
+
+1. Download this repository and copy it into your app's modules directory so that the `oauth.php` file is at `modules/oauth/oauth.php`.
+2. Add an entry to the `[_modules]` section of your conf.ini file to enable this module:
++
+[source,ini]
+----
+[_modules]
+	modules_oauth=modules/oauth/oauth.php
+----
+3. For each OAuth service you wish to support, add a section to the conf.ini file named `[oauth_SERVICENAME]`, where "SERVICENAME" is the name of the service.  You choose this name, it doesn't have to map to any canonical service name.  E.g. You could call your "facebook" service "facebook", or you could call it "bluesquare".  
++
+This section should include at least `client_id` and `client_secret` properties.  E.g.:
++
+[source,ini]
+----
+[oauth_facebook]
+    client_id=XXXXXXXXXXXX
+    client_secret=aXXXXXXXXXXXXXX
+    autocreate=1   ; Optional flag to auto-create user accounts
+----
+4. Add a login action to your actions.ini file with `oauth.url` and `oauth.request_token_url` directives to point to the appropriate OAuth login URLs for your service.  The following snippet includes the correct coordinates for Facebook's OAuth service.
++
+[source,ini]
+----
+[oauth_facebook]
+    oauth.url=https://www.facebook.com/dialog/oauth
+    oauth.request_token_url=https://graph.facebook.com/oauth/access_token
+    label="Login with Facebook"
+    category="login_actions"
+
+----
++
+Notice that this action is added to the "login_actions" category.  This will cause the action button to be displayed on the login form, which makes sense.  However you could add your login button to any menu you like., specified by the `category` directive of the action.
+
+[TIP]
+====
+I've already developed modules for some of the major OAuth service providers which define actions with the correct coordinates.  If you are using one of these providers, you should install the appropriate "sub-module" as this will give you a jump start.  
+
+Some of these include:
+
+. https://github.com/shannah/xataface-module-oauth-facebook[Facebook]
+. https://github.com/shannah/xataface-module-oauth-twitter[Twitter]
+. https://github.com/shannah/xataface-module-oauth-linkedin[LinkedIn]
+. https://github.com/shannah/xataface-module-oauth-instagram[Instagram]
+
+====
+
+=== Linking OAuth User to Local User
+
+When this module logs in a user using an OAuth service, it needs to know *which* local user account should be logged in. You should add a column to your app's "users" table to store the corresponding user ID of each OAuth provider.  For example, you might add a column named "facebook_id" which stores the user's facebook account ID.
+
+You should add a directive to the fields.ini definition for this field like `SERVICENAME_id=1`.  E.g For facebook, you sould add a field named `facebook_id`, with the directive `facebook_id=1`.  E.g.
+
+[source,SQL]
+----
+ALTER TABLE ADD COLUMN facebook_id VARCHAR(100) NULL;
+----
+
+.fields.ini file definition for the `facebook_id` field:
+[source,ini]
+----
+[facebook_id]
+    facebook_id=1
+----
+
+This will allow the Oauth module to link the user record correctly upon successful Oauth login.
+
+=== Auto-Creation of Local Accounts
+
+What if a user logs in using OAuth but they don't already have an account on the system?   In some applications you may want to disallow this - show the user an "Access Denied" error and suggest how they can register an account.  In most applications, however, it would better to have a local account automatically created upon OAuth login.  If you're worried about unknown users accessng the app, don't fret.  You can simply assign a default role to these users that only allow access to the parts of the app that you want them to access.  You can easily add a 2nd level of registration that occurs after the initial OAuth login.
+
+**`autocreate=1`**
+
+If your users table is trivial with just a username column, and you are using a specific OAuth module like the https://github.com/shannah/xataface-module-oauth-facebook[Facebook module], then you might be able to enable auto account creation by simply adding the `autocreate=1` directive to the `[oauth_SERVICENAME]` section of the conf.ini file.  Xataface will try to obtain the username from the OAuth provider upon login and will try to create a "users" record with the same value.  
+
+**`oauth_create_user()`**
+
+In reality, most applications are too complex to get away with this simple strategy.  The recommended approach is to implement the `oauth_create_user($serviceName, $userData)` method in your application delegate class.  
+
+.Example oauth_create_user() implementation.
+[source,php]
+----
+function oauth_create_user($serviceName, $userData) {
+	$required = ['email', 'id'];
+	foreach ($required as $key) {
+		if (!@$userData[$key]) {
+			return PEAR::raiseError('Failed to get field '.$key.' from OAuth provider '.$serviceName);
+		}
+	}
+	$username = $userData['username'];
+	$email = $userData['email'];
+	
+	$existing = df_get_record('users', ['email' => '='. $email]);
+	if ($existing) {
+		return PEAR::raiseError("There is an existing account with that email address.  Please log in with your email address first to connect it to your account.");
+	}
+	$user = new Dataface_Record('users', []);
+	$user->setValues([
+		'email' => $email,
+		'username' => $email
+	]);
+	$idField = $serviceName.'_id';
+	$user->setValue($idField, $userData['id']);
+	$res = $user->save();
+	if (PEAR::isError($res)) {
+		return $res;
+	}
+	return $user;
+}
+----
+
+IMPORTANT: You *must* install the appropriate OAuth sub-modules for all OAuth services in your app in order for this to work, otherwise the `$userData` won't include any data, as these modules implement the provider-specific code to extract user data from the service.
+
+== Links
+
+. https://github.com/shannah/xataface[Xataface]
+. https://github.com/shannah/xataface-module-oauth-facebook[Facebook OAuth module]
+. https://github.com/shannah/xataface-module-oauth-twitter[Twitter OAuth module]
+. https://github.com/shannah/xataface-module-oauth-linkedin[LinkedIn OAuth module]
+. https://github.com/shannah/xataface-module-oauth-instagram[Instagram OAuth module]
+
+
+
