@@ -45,7 +45,7 @@ class actions_oauth2_login {
             $url .= '&scope='.urlencode($serviceConfig['scope']);
         }
         
-        header('Location: '.$url);
+        $app->redirect($url);
         exit;
             
     }

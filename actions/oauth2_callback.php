@@ -74,11 +74,11 @@ class actions_oauth2_callback {
                         }
                         if ($res) {
                             $_SESSION['-msg'] = 'Profile was successfully linked to your '.$serviceName.' profile.';
-                            header('Location: '.DATAFACE_SITE_HREF);
+                            $app->redirect(DATAFACE_SITE_HREF);
                             exit;
                         } else {
                             $_SESSION['-msg'] = "Logged into ".$serviceName." but attempt to link profile failed.";
-                            header('Location: '.DATAFACE_SITE_HREF);
+                            $app->redirect(DATAFACE_SITE_HREF);
                             exit;
                         }
                     } else if ($idColumn and $serviceUserId) {
@@ -88,18 +88,18 @@ class actions_oauth2_callback {
                             $res = $user->save();
                             if (PEAR::isError($res)) {
                                 $_SESSION['-msg'] = "Login succeeded, but failed to link profile. ".$res->getMessage();
-                                header('Location: '.DATAFACE_SITE_HREF);
+                                $app->redirect(DATAFACE_SITE_HREF);
                                 exit;
                             }
                         }
                         $_SESSION['-msg'] = 'Successfully linked '.$serviceName.' account to your application user account';
-                        header('Location: '.DATAFACE_SITE_HREF);
+                        $app->redirect(DATAFACE_SITE_HREF);
                         exit;
                             
                         
                     } else {
                         $_SESSION['-msg'] = 'Login to '.$serviceName.' succeeeded but you were already logged in.';
-                        header('Location: '.DATAFACE_SITE_HREF);
+                        $app->redirect(DATAFACE_SITE_HREF);
                         exit;
                     }
                 } 
@@ -109,7 +109,7 @@ class actions_oauth2_callback {
                         $_SESSION['UserName'] = $user->val($auth->usernameColumn);
                     } else {
                         $_SESSION['-msg'] = 'Login to '.$serviceName.' succeeded but failed to complete login because the found user account has no username';
-                        header('Location: '.DATAFACE_SITE_HREF);
+                        $app->redirect(DATAFACE_SITE_HREF);
                         exit;
                     }
                 } else {
@@ -146,7 +146,7 @@ class actions_oauth2_callback {
                 }
                 
                 $_SESSION['-msg'] = "Logged in successfully using ".$serviceName;
-                header('Location: '.$url);
+                $app->redirect($url);
             } else {
                 $_SESSION['-msg'] = "OAuth login failed.  Could not validate access token with service ".$serviceName;
                 return Dataface_Error::permissionDenied("Failed to validate access token with service ".$serviceName);

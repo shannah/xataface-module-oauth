@@ -51,7 +51,7 @@ class actions_oauth1_login {
         //print_r($oauthData);
         
         
-        header('Location: '.$serviceConfig['authorize_url'].'?oauth_token='.urlencode($oauthData['oauth_token']));
+        $app->redirect($serviceConfig['authorize_url'].'?oauth_token='.urlencode($oauthData['oauth_token']));
         exit;
 
             

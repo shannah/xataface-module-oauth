@@ -268,7 +268,7 @@ class modules_oauth {
             $params[$k] = $v;
         }
         if ($queryString) {
-            if ($queryString{0} == '?') {
+            if ($queryString[0] == '?') {
                 $queryString = substr($queryString, 1);
             }
             parse_str($queryString, $tmpParams);
